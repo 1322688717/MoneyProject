@@ -1,5 +1,9 @@
 package com.java8888.java9999.encrypt;
 
+import android.content.Context;
+
+import com.java8888.java9999.R;
+
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
@@ -16,9 +20,9 @@ public class AesUtils {
      **/
     private static final String CipherMode = "AES/CBC/PKCS5Padding";
     //  key
-    private static String key = "cff054d1d7c84036a3dc160f";
+    private static String key =  "";
     //  偏移量
-    private static String iv = "9457e5f423704b15";
+    private static String iv = "";
 
     private static String ALGO = "AES";
 
@@ -29,11 +33,13 @@ public class AesUtils {
      * @return
      * @throws Exception
      */
-    public static String encrypt(String plainText) {
+    public static String encrypt(String plainText, Context context) {
         try {
             Cipher cipher = Cipher.getInstance(CipherMode);
             byte[] dataBytes = plainText.getBytes("UTF-8");
+            key = context.getString(R.string.key);
             SecretKeySpec keyspec = new SecretKeySpec(key.getBytes("UTF-8"), ALGO);
+            iv = context.getString(R.string.iv);
             IvParameterSpec ivspec = new IvParameterSpec(initIV(iv));
             cipher.init(Cipher.ENCRYPT_MODE, keyspec, ivspec);
             byte[] encrypted = cipher.doFinal(dataBytes);
@@ -51,11 +57,13 @@ public class AesUtils {
      * @param cipherText
      * @return
      */
-    public static String decrypt(String cipherText) {
+    public static String decrypt(String cipherText,Context context) {
         try {
             byte[] encrypted1 = Base64Utils.decode(hexStringToString(cipherText));
             Cipher cipher = Cipher.getInstance(CipherMode);
+            key = context.getString(R.string.key);
             SecretKeySpec keyspec = new SecretKeySpec(key.getBytes("UTF-8"), ALGO);
+            iv = context.getString(R.string.iv);
             IvParameterSpec ivspec = new IvParameterSpec(initIV(iv));
             cipher.init(Cipher.DECRYPT_MODE, keyspec, ivspec);
             byte[] original = cipher.doFinal(encrypted1);

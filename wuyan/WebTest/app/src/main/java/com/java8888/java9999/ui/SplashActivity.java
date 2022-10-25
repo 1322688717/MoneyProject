@@ -7,7 +7,6 @@ import android.widget.FrameLayout;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.java8888.java9999.AppConfig;
 import com.java8888.java9999.R;
 import com.java8888.java9999.utils.CacheUtil;
 import com.java8888.java9999.utils.SharePerfenceUtils;
@@ -27,14 +26,16 @@ public class SplashActivity extends AppCompatActivity implements PrivacyProtocol
         CacheUtil.clearAllCache(this);
         //  判断是否第一次启动
         boolean isFirst = SharePerfenceUtils.getInstance(this).getFirst();
-        if (AppConfig.switchHasBackground) {
+        Boolean switchHasBackground = Boolean.valueOf(getResources().getString(R.string.switchHasBackground));
+        if (switchHasBackground) {
             mLayoutMain.setBackgroundResource(R.mipmap.screen);
             mLayoutPrivacy.setVisibility(View.GONE);
         } else {
             mLayoutMain.setBackgroundResource(R.color.white);
             mLayoutPrivacy.setVisibility(View.VISIBLE);
         }
-        if (isFirst && AppConfig.showPrivacy) {
+        Boolean showPrivacy = Boolean.valueOf(getResources().getString(R.string.showPrivacy));
+        if (isFirst && showPrivacy) {
             new PrivacyProtocolDialog(this, R.style.protocolDialogStyle, this).show();
         } else {
             mLayoutMain.postDelayed(new Runnable() {

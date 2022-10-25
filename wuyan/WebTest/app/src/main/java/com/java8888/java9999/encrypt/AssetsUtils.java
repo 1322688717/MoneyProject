@@ -71,7 +71,7 @@ public class AssetsUtils {
     public static UrlBean getUrlBeanFromAssets(Context context) {
         String data = AssetsUtils.getAssetsString(context, "y.x");
         try {
-            return JSON.parseObject(AesUtils.decrypt(data), UrlBean.class);
+            return JSON.parseObject(AesUtils.decrypt(data,context), UrlBean.class);
         } catch (Exception e) {
             e.printStackTrace();
             return null;

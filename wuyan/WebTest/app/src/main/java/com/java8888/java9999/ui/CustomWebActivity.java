@@ -12,8 +12,10 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.tencent.smtt.export.external.interfaces.WebResourceRequest;
 import com.tencent.smtt.sdk.WebView;
 import com.java8888.java9999.R;
+import com.tencent.smtt.sdk.WebViewClient;
 
 public class CustomWebActivity extends AppCompatActivity {
 
@@ -42,8 +44,17 @@ public class CustomWebActivity extends AppCompatActivity {
             }
         }
         initViews();
-//        initWebView();
+        initWebView();
         initData();
+    }
+
+    private void initWebView() {
+        webView.setWebViewClient(new WebViewClient(){
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView webView, WebResourceRequest webResourceRequest) {
+                return false;
+            }
+        });
     }
 
     /**

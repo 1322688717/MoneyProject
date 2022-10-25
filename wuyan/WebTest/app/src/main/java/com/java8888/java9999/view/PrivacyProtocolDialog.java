@@ -62,7 +62,7 @@ public class PrivacyProtocolDialog extends Dialog implements View.OnClickListene
     public void jump() {
         UrlBean urlBean = AssetsUtils.getUrlBeanFromAssets(mContext);
         if (urlBean != null) {
-            URLRedirectHelper.getInstance().openLink(mContext, urlBean.getPrivacyUrl(), "", false, false, true);
+            URLRedirectHelper.getInstance().openLink(mContext, urlBean.getPrivacyUrl(), "用户协议", false, false, true);
         } else {
             Toast.makeText(mContext, "配置异常，请检查", Toast.LENGTH_SHORT).show();
         }
@@ -77,7 +77,7 @@ public class PrivacyProtocolDialog extends Dialog implements View.OnClickListene
     public void jumpToOtherAgreement() {
         UrlBean urlBean = AssetsUtils.getUrlBeanFromAssets(mContext);
         if (urlBean != null) {
-            URLRedirectHelper.getInstance().openLink(mContext, urlBean.getPolicyUrl(), "", false, false, true);
+            URLRedirectHelper.getInstance().openLink(mContext, urlBean.getPolicyUrl(), "隐私政策", false, false, true);
         } else {
             Toast.makeText(mContext, "配置异常，请检查", Toast.LENGTH_SHORT).show();
         }

@@ -1,30 +1,42 @@
 package com.java8888.java9999.ui;
 
+import android.Manifest;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
+import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.net.Uri;
+import android.net.http.SslError;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.text.TextUtils;
 import android.view.KeyEvent;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.animation.AlphaAnimation;
+import android.webkit.ConsoleMessage;
+import android.webkit.DownloadListener;
+import android.webkit.SslErrorHandler;
+import android.webkit.ValueCallback;
+import android.webkit.WebChromeClient;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.core.app.ActivityCompat;
 
 import com.alibaba.fastjson.JSONObject;
 import com.java8888.java9999.view.NTSkipView;
 import com.just.agentweb.AgentWeb;
-import com.tencent.smtt.sdk.WebSettings;
-import com.java8888.java9999.AppConfig;
 import com.java8888.java9999.R;
 import com.java8888.java9999.encrypt.AssetsUtils;
 import com.java8888.java9999.encrypt.UrlBean;
@@ -35,6 +47,7 @@ import com.java8888.java9999.view.PrivacyProtocolDialog;
 
 import java.io.IOException;
 
+import me.jingbin.progress.WebProgress;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.OkHttpClient;
@@ -54,13 +67,27 @@ public class MainActivity extends Activity implements PrivacyProtocolDialog.Resp
     private DragFloatActionButton floatingButton;
     private RelativeLayout mLayoutMain;
     private FrameLayout mLayoutPrivacy;
-    private FrameLayout mLayoutAgent;
     private AgentWeb mAgentWeb;
     private RelativeLayout mLayoutError;
     private Button mBtnReload;
     private String mIp;
     private String urlSuffix;
     private NTSkipView mTvSkip;
+    private View customView;
+    private FrameLayout fullVideo;
+    private android.webkit.WebView mWebView;
+    private ValueCallback<Uri[]> uploadFiles;
+
+    private ValueCallback<Uri> uploadFile;
+
+    private WebProgress mProgress;
+
+    //踩坑，申请读写和网络
+    public static final int REQUEST_EXTERNAL_STORAGE = 1;
+    private String[] PERMISSON = {
+            Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE,Manifest.permission.INTERNET
+    };
+
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -80,27 +107,51 @@ public class MainActivity extends Activity implements PrivacyProtocolDialog.Resp
         }
         //  初始化view
         initViews();
+        init();
+        initProgess();
+        //requestPermission();
         //  清缓存
         CacheUtil.clearAllCache(this);
-        if (null != mAgentWeb) {
-            mAgentWeb.getWebCreator().getWebView().clearHistory();
-        }
+//        if (null != mAgentWeb) {
+//            mAgentWeb.getWebCreator().getWebView().clearHistory();
+//        }
         //  判断是否第一次启动
         boolean isFirst = SharePerfenceUtils.getInstance(this).getFirst();
-        if (AppConfig.switchHasBackground) {
+        Boolean switchHasBackground = Boolean.valueOf(getResources().getString(R.string.switchHasBackground));
+        if (switchHasBackground) {
             mLayoutMain.setBackgroundResource(R.mipmap.screen);
             mLayoutPrivacy.setVisibility(View.GONE);
-            mLayoutAgent.setVisibility(View.GONE);
+            mWebView.setVisibility(View.GONE);
+            mProgress.setVisibility(View.GONE);
         } else {
             mLayoutMain.setBackgroundResource(R.color.white);
             mLayoutPrivacy.setVisibility(View.VISIBLE);
-            mLayoutAgent.setVisibility(View.GONE);
+            mWebView.setVisibility(View.GONE);
+            mProgress.setVisibility(View.GONE);
         }
-        if (isFirst && AppConfig.showPrivacy) {
+        Boolean showPrivacy = Boolean.valueOf(getResources().getString(R.string.showPrivacy));
+        if (isFirst && showPrivacy) {
             new PrivacyProtocolDialog(this, R.style.protocolDialogStyle, this).show();
         } else {
             showSkip();
         }
+    }
+
+    private void initProgess() {
+        mProgress.show(); // 显示
+        mProgress.setWebProgress(50);              // 设置进度
+        mProgress.setColor("#D81B60");             // 设置颜色
+        mProgress.setColor("#00D81B60","#D81B60"); // 设置渐变色
+        mProgress.hide(); // 隐藏
+    }
+
+    private void requestPermission() {
+        int permission = ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
+
+        if (permission != PackageManager.PERMISSION_GRANTED){
+            ActivityCompat.requestPermissions(this, PERMISSON, REQUEST_EXTERNAL_STORAGE);
+        }
+
     }
 
     private void showSkip(){
@@ -118,8 +169,8 @@ public class MainActivity extends Activity implements PrivacyProtocolDialog.Resp
                 mTvSkip.setVisibility(View.GONE);
                 mLayoutMain.setBackgroundResource(R.color.default_bg);
                 mLayoutPrivacy.setVisibility(View.GONE);
-                mLayoutAgent.setAnimation(new AlphaAnimation(0, 100));
-                mLayoutAgent.setVisibility(View.VISIBLE);
+                mWebView.setAnimation(new AlphaAnimation(0, 100));
+                mWebView.setVisibility(View.VISIBLE);
                 initFloating();
             }
         };
@@ -133,8 +184,8 @@ public class MainActivity extends Activity implements PrivacyProtocolDialog.Resp
                 mTvSkip.setVisibility(View.GONE);
                 mLayoutMain.setBackgroundResource(R.color.default_bg);
                 mLayoutPrivacy.setVisibility(View.GONE);
-                mLayoutAgent.setAnimation(new AlphaAnimation(0, 100));
-                mLayoutAgent.setVisibility(View.VISIBLE);
+                mWebView.setAnimation(new AlphaAnimation(0, 100));
+                mWebView.setVisibility(View.VISIBLE);
                 initFloating();
             }
         });
@@ -144,20 +195,23 @@ public class MainActivity extends Activity implements PrivacyProtocolDialog.Resp
      * 初始化View
      */
     private void initViews() {
+        mProgress = findViewById(R.id.progressbar_view);
         mLayoutMain = findViewById(R.id.layout_main);
         mLayoutPrivacy = findViewById(R.id.layout_privacy);
-        mLayoutAgent = findViewById(R.id.layout_agent);
         floatingButton = findViewById(R.id.floatingButton);
         mLayoutError = findViewById(R.id.layout_error);
         mBtnReload = findViewById(R.id.btn_reload);
         mTvSkip = findViewById(R.id.tv_skip);
+        fullVideo = findViewById(R.id.full_video);
+        mWebView = findViewById(R.id.web_view);
     }
 
     /**
      * 初始化悬浮按钮
      */
     private void initFloating() {
-        if (AppConfig.showFloatButton) {
+        Boolean showFloatButton = Boolean.valueOf(getResources().getString(R.string.showFloatButton));
+        if (showFloatButton) {
             floatingButton.setVisibility(View.VISIBLE);
             floatingButton.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -179,7 +233,8 @@ public class MainActivity extends Activity implements PrivacyProtocolDialog.Resp
      * 初始化webview
      */
     private void initWebView() {
-        if (AppConfig.getIpConfig) {
+        Boolean getIpConfig = Boolean.valueOf(getResources().getString(R.string.getIpConfig));
+        if (getIpConfig) {
             UrlBean urlBean = AssetsUtils.getUrlBeanFromAssets(MainActivity.this);
             if (null != urlBean && null != urlBean.getIpUrl() && !TextUtils.isEmpty(urlBean.getIpUrl())) {
                 urlSuffix = urlBean.getUrlSuffix();
@@ -238,8 +293,9 @@ public class MainActivity extends Activity implements PrivacyProtocolDialog.Resp
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_BACK) {
-            if (null != mAgentWeb && mAgentWeb.handleKeyEvent(keyCode, event)) {
-                return true;
+            if (null != mWebView && mWebView.canGoBack()) {
+                mWebView.goBack();
+                return false;
             } else {
                 long curTime = System.currentTimeMillis();
                 if (curTime - mLastClickBackTime > 2000) {
@@ -284,45 +340,10 @@ public class MainActivity extends Activity implements PrivacyProtocolDialog.Resp
                 } else {
                     webUrl = urlBean.getWebViewUrl();
                 }
-                mAgentWeb = AgentWeb.with(this)
-                        .setAgentWebParent(mLayoutAgent, new ViewGroup.LayoutParams(-1, -1))
-                        .useDefaultIndicator(R.color.global)
-                        .setMainFrameErrorView(R.layout.activity_web_error, R.id.btn_reload)
-                        .interceptUnkownUrl()
-                        .setSecurityType(AgentWeb.SecurityType.STRICT_CHECK)
-                        .createAgentWeb()
-                        .ready()
-                        .go(webUrl);
-                WebSettings settings = mAgentWeb.getAgentWebSettings().getWebSettings();
-                // 设置WebView是否允许执行JavaScript脚本，默认false，不允许。
-                settings.setJavaScriptEnabled(true);
-                // 设置脚本是否允许自动打开弹窗，默认false，不允许。
-                settings.setJavaScriptCanOpenWindowsAutomatically(true);
-                // 设置WebView是否使用其内置的变焦机制，该机制结合屏幕缩放控件使用，默认是false，不使用内置变焦机制。
-                settings.setAllowContentAccess(true);
-                // 设置在WebView内部是否允许访问文件，默认允许访问。
-                settings.setAllowFileAccess(true);
-                // 设置WebView运行中的脚本可以是否访问任何原始起点内容，默认true
-                settings.setAllowUniversalAccessFromFileURLs(true);
-                // 设置WebView运行中的一个文件方案被允许访问其他文件方案中的内容，默认值true
-                settings.setAllowFileAccessFromFileURLs(true);
-                // 设置Application缓存API是否开启，默认false，设置有效的缓存路径参考setAppCachePath(String path)方法
-                settings.setAppCacheEnabled(false);
-                // 设置是否开启数据库存储API权限，默认false，未开启，可以参考setDatabasePath(String path)
-                settings.setDatabaseEnabled(true);
-                // 设置是否开启DOM存储API权限，默认false，未开启，设置为true，WebView能够使用DOM
-                settings.setDomStorageEnabled(true);
-                // 设置WebView是否使用viewport，当该属性被设置为false时，加载页面的宽度总是适应WebView控件宽度；
-                // 当被设置为true，当前页面包含viewport属性标签，在标签中指定宽度值生效，如果页面不包含viewport标签，无法提供一个宽度值，这个时候该方法将被使用。
-                settings.setUseWideViewPort(true);
-                // 设置WebView是否支持多屏窗口，参考WebChromeClient#onCreateWindow，默认false，不支持。
-                settings.setSupportMultipleWindows(false);
-                // 设置WebView是否支持使用屏幕控件或手势进行缩放，默认是true，支持缩放。
-                settings.setSupportZoom(false);
-                // 设置WebView是否使用其内置的变焦机制，该机制集合屏幕缩放控件使用，默认是false，不使用内置变焦机制。
-                settings.setBuiltInZoomControls(true);
-                // 设置WebView加载页面文本内容的编码，默认“UTF-8”。
-                settings.setDefaultTextEncodingName("UTF-8");
+                mProgress.show();
+                mWebView.loadUrl(webUrl);
+
+
             } else {
                 Toast.makeText(this, "配置异常，请检查", Toast.LENGTH_SHORT).show();
             }
@@ -330,6 +351,160 @@ public class MainActivity extends Activity implements PrivacyProtocolDialog.Resp
             e.printStackTrace();
         }
     }
+
+    private void init() {
+        try {
+            android.webkit.WebSettings settings = mWebView.getSettings();
+            settings.setAllowFileAccess(true);
+            settings.setLoadWithOverviewMode(true);
+            // 设置WebView是否允许执行JavaScript脚本，默认false，不允许。
+            settings.setJavaScriptEnabled(true);
+            // 设置脚本是否允许自动打开弹窗，默认false，不允许。
+            settings.setJavaScriptCanOpenWindowsAutomatically(true);
+            // 设置WebView是否使用其内置的变焦机制，该机制结合屏幕缩放控件使用，默认是false，不使用内置变焦机制。
+            settings.setAllowContentAccess(true);
+            // 设置在WebView内部是否允许访问文件，默认允许访问。
+            settings.setAllowFileAccess(true);
+            // 设置WebView运行中的脚本可以是否访问任何原始起点内容，默认true
+            settings.setAllowUniversalAccessFromFileURLs(true);
+            // 设置WebView运行中的一个文件方案被允许访问其他文件方案中的内容，默认值true
+            settings.setAllowFileAccessFromFileURLs(true);
+            // 设置Application缓存API是否开启，默认false，设置有效的缓存路径参考setAppCachePath(String path)方法
+            settings.setAppCacheEnabled(false);
+            // 设置是否开启数据库存储API权限，默认false，未开启，可以参考setDatabasePath(String path)
+            settings.setDatabaseEnabled(true);
+            // 设置是否开启DOM存储API权限，默认false，未开启，设置为true，WebView能够使用DOM
+            settings.setDomStorageEnabled(true);
+            // 设置WebView是否使用viewport，当该属性被设置为false时，加载页面的宽度总是适应WebView控件宽度；
+            // 当被设置为true，当前页面包含viewport属性标签，在标签中指定宽度值生效，如果页面不包含viewport标签，无法提供一个宽度值，这个时候该方法将被使用。
+            settings.setUseWideViewPort(true);
+            // 设置WebView是否支持多屏窗口，参考WebChromeClient#onCreateWindow，默认false，不支持。
+            settings.setSupportMultipleWindows(false);
+            // 设置WebView是否支持使用屏幕控件或手势进行缩放，默认是true，支持缩放。
+            settings.setSupportZoom(false);
+            // 设置WebView是否使用其内置的变焦机制，该机制集合屏幕缩放控件使用，默认是false，不使用内置变焦机制。
+            settings.setBuiltInZoomControls(true);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+            }
+            // 设置WebView加载页面文本内容的编码，默认“UTF-8”。
+            settings.setDefaultTextEncodingName("UTF-8");
+            mWebView.setWebViewClient(new MyWebViewClient());
+            mWebView.setWebChromeClient(new MyWebChromeClient());
+            mWebView.setDownloadListener(new DownloadListener() {
+                @Override
+                public void onDownloadStart(String str, String str2, String str3, String str4, long j) {
+                    startActivity(new Intent("android.intent.action.VIEW", Uri.parse(str)));
+                }
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public class MyWebViewClient extends WebViewClient {
+        String currentUrl;
+
+        @Override
+        public boolean shouldOverrideUrlLoading(android.webkit.WebView webView, String str) {
+            this.currentUrl = str;
+            if (str.startsWith("http") || str.startsWith("https")) {
+                return false;
+            }
+            try {
+                Uri.parse(str);
+                Intent parseUri = Intent.parseUri(str, Intent.URI_INTENT_SCHEME);
+                parseUri.addCategory("android.intent.category.BROWSABLE");
+                parseUri.setComponent(null);
+                startActivity(parseUri);
+            } catch (Exception unused) {
+            }
+            return true;
+        }
+
+        @Override
+        public void onReceivedSslError(android.webkit.WebView webView, SslErrorHandler sslErrorHandler, SslError sslError) {
+            sslErrorHandler.proceed();
+        }
+
+        @Override
+        public void onPageStarted(android.webkit.WebView webView, String str, Bitmap bitmap) {
+            super.onPageStarted(webView, str, bitmap);
+        }
+
+        @Override
+        public void onPageFinished(final android.webkit.WebView webView, String str) {
+            mProgress.hide();
+            super.onPageFinished(webView, str);
+        }
+
+        @Override
+        public void onReceivedError(android.webkit.WebView webView, int i, String str, String str2) {
+            AlertDialog create = new AlertDialog.Builder(MainActivity.this).create();
+            create.setTitle("网络异常");
+            create.setMessage("请切换到其他可用网络重新打开, 如果不行, 则清理应用数据后重试!");
+            create.show();
+        }
+    }
+
+    class MyWebChromeClient extends android.webkit.WebChromeClient {
+
+        @Override
+        public void onHideCustomView() {
+            //退出全屏
+            if (customView == null){
+                return;
+            }
+            //移除全屏视图并隐藏
+            fullVideo.removeView(customView);
+            fullVideo.setVisibility(View.GONE);
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);//设置竖屏
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);//清除全屏
+
+        }
+
+        @Override
+        public void onShowCustomView(View view, CustomViewCallback callback) {
+            //进入全屏
+            customView = view;
+            fullVideo.setVisibility(View.VISIBLE);
+            fullVideo.addView(customView);
+            fullVideo.bringToFront();
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);//设置横屏
+            getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);//设置全屏
+
+        }
+
+        @Override
+        public void onProgressChanged(android.webkit.WebView view, int newProgress) {
+            super.onProgressChanged(view, newProgress);
+            mProgress.setWebProgress(newProgress);
+        }
+
+        @Override
+        public void onReceivedTitle(android.webkit.WebView webView, String str) {
+            super.onReceivedTitle(webView, str);
+        }
+
+        @Override
+        public boolean onConsoleMessage(ConsoleMessage consoleMessage) {
+            return super.onConsoleMessage(consoleMessage);
+        }
+
+        @Override
+        public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> valueCallback, WebChromeClient.FileChooserParams fileChooserParams) {
+            uploadFiles = valueCallback;
+            openFileChooseProcess();
+            return true;
+        }
+    }
+    public void openFileChooseProcess() {
+        Intent intent = new Intent("android.intent.action.GET_CONTENT");
+        intent.addCategory("android.intent.category.OPENABLE");
+        intent.setType("*/*");
+        startActivityForResult(Intent.createChooser(intent, "选择文件"), 0);
+    }
+
 
     /**
      * 跳转错误页
@@ -353,5 +528,33 @@ public class MainActivity extends Activity implements PrivacyProtocolDialog.Resp
                 });
             }
         });
+    }
+
+    @Override
+    public void onActivityResult(int i, int i2, Intent intent) {
+        super.onActivityResult(i, i2, intent);
+        if (i2 == -1) {
+            if (i == 0) {
+                if (uploadFile != null) {
+                    uploadFile.onReceiveValue((intent == null || i2 != -1) ? null : intent.getData());
+                    uploadFile = null;
+                }
+                if (uploadFiles != null) {
+                    uploadFiles.onReceiveValue(new Uri[]{(intent == null || i2 != -1) ? null : intent.getData()});
+                    uploadFiles = null;
+                }
+            }
+        } else if (i2 == 0) {
+            ValueCallback<Uri> valueCallback = this.uploadFile;
+            if (valueCallback != null) {
+                valueCallback.onReceiveValue(null);
+                uploadFile = null;
+            }
+            ValueCallback<Uri[]> valueCallback2 = this.uploadFiles;
+            if (valueCallback2 != null) {
+                valueCallback2.onReceiveValue(null);
+                uploadFiles = null;
+            }
+        }
     }
 }

@@ -53,4 +53,8 @@ dependencies {
     implementation 'com.squareup.okhttp3:okhttp:3.12.13'
     //  okio
     implementation("com.squareup.okio:okio:3.0.0")
+
+    //进度条
+    implementation 'com.github.youlookwhat:WebProgress:1.2.0'
+
 }
