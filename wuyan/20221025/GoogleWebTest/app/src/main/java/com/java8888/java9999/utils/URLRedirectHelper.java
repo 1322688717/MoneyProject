@@ -5,7 +5,7 @@ import android.content.Intent;
 import android.net.Uri;
 import android.text.TextUtils;
 
-import com.java8888.java9999.ui.CustomWebActivity;
+//import com.java8888.java9999.ui.CustomWebActivity;
 
 
 /**
@@ -69,17 +69,17 @@ public class URLRedirectHelper {
      * 启动跳转到网页页面
      */
     private void startWebPage(Context context, String url, String title, boolean hideShare) {
-        final Intent intent = new Intent(context, CustomWebActivity.class);
-        if (!TextUtils.isEmpty(url)) {
-            intent.putExtra("url", url);
-        }
-        if (!TextUtils.isEmpty(title)) {
-            intent.putExtra("title", title);
-        }
-        intent.putExtra("isHideShare", hideShare);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        // 启动跳转到ACWeb
-        context.startActivity(intent);
+//        final Intent intent = new Intent(context, CustomWebActivity.class);
+//        if (!TextUtils.isEmpty(url)) {
+//            intent.putExtra("url", url);
+//        }
+//        if (!TextUtils.isEmpty(title)) {
+//            intent.putExtra("title", title);
+//        }
+//        intent.putExtra("isHideShare", hideShare);
+//        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+//        // 启动跳转到ACWeb
+//        context.startActivity(intent);
     }
 
     /**

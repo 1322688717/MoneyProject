@@ -11,7 +11,7 @@ import android.webkit.WebSettings;
 import android.widget.Toast;
 
 import com.java8888.java9999.R;
-import com.java8888.java9999.encrypt.AssetsUtils;
+//import com.java8888.java9999.encrypt.AssetsUtils;
 import com.java8888.java9999.encrypt.UrlBean;
 import com.java8888.java9999.utils.DesentyUtil;
 import com.java8888.java9999.utils.URLRedirectHelper;
@@ -59,12 +59,12 @@ public class PrivacyProtocolDialog extends Dialog implements View.OnClickListene
 
     @JavascriptInterface
     public void jump() {
-        UrlBean urlBean = AssetsUtils.getUrlBeanFromAssets(mContext);
-        if (urlBean != null) {
-            URLRedirectHelper.getInstance().openLink(mContext, urlBean.getPrivacyUrl(), "", false, false, true);
-        } else {
-            Toast.makeText(mContext, "配置异常，请检查", Toast.LENGTH_SHORT).show();
-        }
+//        UrlBean urlBean = AssetsUtils.getUrlBeanFromAssets(mContext);
+//        if (urlBean != null) {
+//            URLRedirectHelper.getInstance().openLink(mContext, urlBean.getPrivacyUrl(), "", false, false, true);
+//        } else {
+//            Toast.makeText(mContext, "配置异常，请检查", Toast.LENGTH_SHORT).show();
+//        }
     }
 
     @JavascriptInterface
@@ -74,12 +74,12 @@ public class PrivacyProtocolDialog extends Dialog implements View.OnClickListene
 
     @JavascriptInterface
     public void jumpToOtherAgreement() {
-        UrlBean urlBean = AssetsUtils.getUrlBeanFromAssets(mContext);
-        if (urlBean != null) {
-            URLRedirectHelper.getInstance().openLink(mContext, urlBean.getPolicyUrl(), "", false, false, true);
-        } else {
-            Toast.makeText(mContext, "配置异常，请检查", Toast.LENGTH_SHORT).show();
-        }
+//        UrlBean urlBean = AssetsUtils.getUrlBeanFromAssets(mContext);
+//        if (urlBean != null) {
+//            URLRedirectHelper.getInstance().openLink(mContext, urlBean.getPolicyUrl(), "", false, false, true);
+//        } else {
+//            Toast.makeText(mContext, "配置异常，请检查", Toast.LENGTH_SHORT).show();
+//        }
     }
 
     @Override
